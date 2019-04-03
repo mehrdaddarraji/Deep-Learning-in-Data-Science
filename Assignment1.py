@@ -22,7 +22,7 @@ def load_batch(file):
     
     return X, Y.transpose(), y
 
-# function 2: initialize model W and b with random gaussian values
+# initialize model W and b with random gaussian values
 # with zero mean and standard deviation of 0.01
 def init_model_W_b(W_first, W_second, b_first, b_second):
     zero_mean = 0
@@ -47,6 +47,7 @@ def evaluate_classifier(X, W, b):
 
 #Visualizing CIFAR 10
 def view(X):
+    X = X * 255
     X = X.transpose().reshape(10000, 3, 32, 32).transpose(0,2,3,1).astype("uint8")
     fig, axes1 = plt.subplots(5,5,figsize=(3,3))
     for j in range(5):
@@ -55,8 +56,10 @@ def view(X):
             axes1[j][k].set_axis_off()
             axes1[j][k].imshow(X[i:i+1][0])
 
+    plt.show()
+
 # computes the cost function for a set of images
-def compute_cost(X, Y, W, b, lmbda):
+def compute_cost(X, Y, W, b, lambda_):
     one_over_data_magnitude = 1 / len(X[0])
     p = evaluate_classifier(X, W, b)
     Y_T_p = np.matmul(Y.transpose(), p)
@@ -66,7 +69,7 @@ def compute_cost(X, Y, W, b, lmbda):
     W_squared = W ** 2
     W_squared_sum = W_squared.sum()
     
-    cost = (one_over_data_magnitude * l_cross_sum) + (lmbda * W_squared_sum)
+    cost = (one_over_data_magnitude * l_cross_sum) + (lambda_ * W_squared_sum)
 
     return cost
 
@@ -91,42 +94,41 @@ def compute_accuracy(X, y, W, b):
 
 # computes gradient descent based on 
 # last slide of lecture 3
-def compute_gradients(X, Y, P, W, lmbda):
+def compute_gradients(X, Y, P, W, lambda_):
     G_batch = np.subtract(Y, P) * -1
     L_w_r_t_W = 1 / len(Y[0]) * G_batch.dot(X.transpose())
     L_w_r_t_b = 1 / len(Y[0]) * G_batch.dot(np.ones((len(Y[0]), 1)))
-    grad_W = L_w_r_t_W + (2 * lmbda * W)
+    grad_W = L_w_r_t_W + (2 * lambda_ * W)
     grad_b = L_w_r_t_b
     
     return grad_W, grad_b
 
 def main():
-    batch_1_X, batch_1_Y, batch_1_y = load_batch('Datasets/cifar-10-batches-py/data_batch_1')
-    batch_2_X, batch_2_Y, batch_2_y = load_batch('Datasets/cifar-10-batches-py/data_batch_2')
-    test_batch_X, test_batch_Y, test_batch_y = load_batch('Datasets/cifar-10-batches-py/test_batch')
-    print(batch_1_X)
+    train_X, train_Y, train_y = load_batch('Datasets/cifar-10-batches-py/data_batch_1')
+    validation_X, validation_Y, validation_y = load_batch('Datasets/cifar-10-batches-py/data_batch_2')
+    test_X, test_Y, test_y = load_batch('Datasets/cifar-10-batches-py/test_batch')
+    print(train_X)
 
     k = 10 # number of lables
     d = 3072 # dimentionality of each image 32x32x3 = 3072
     model_W, model_b = init_model_W_b(k, d, k, 1)
 
-    p_batch_1 = evaluate_classifier(batch_1_X, model_W, model_b)
-    p_batch_2 = evaluate_classifier(batch_2_X, model_W, model_b)
-    p_test_batch = evaluate_classifier(test_batch_X, model_W, model_b)
+    p_batch_1 = evaluate_classifier(train_X, model_W, model_b)
+    p_batch_2 = evaluate_classifier(validation_X, model_W, model_b)
+    p_test_batch = evaluate_classifier(test_X, model_W, model_b)
     print("Probability for batch 1: ")
     print(p_batch_1)
     print(p_batch_1.shape)
     print((p_batch_1.transpose())[0].sum())
 
-    J = compute_cost(batch_1_X, batch_1_Y, model_W, model_b, 1)
+    J = compute_cost(train_X, train_Y, model_W, model_b, 1)
 
-    acc = compute_accuracy(batch_1_X, batch_1_y, model_W, model_b)
+    acc = compute_accuracy(train_X, train_y, model_W, model_b)
 
-    grad_W, grad_b = compute_gradients(batch_1_X, batch_1_Y, p_batch_1, model_W, 1)
+    grad_W, grad_b = compute_gradients(train_X, train_Y, p_batch_1, model_W, 1)
     print(grad_W.shape)
     print(grad_b.shape)
-
-    #print(ComputeGradsNum(batch_1_X, batch_1_Y, model_W, model_b, 0))
+    view(train_X)
 
 
 if __name__ == '__main__':
