@@ -1,5 +1,7 @@
 addpath 'Datasets/cifar-10-batches-mat/';
 
+main()
+
 function m = main()
     % load the batches
     [train_X, train_Y, train_y] = LoadBatch('data_batch_1.mat');
@@ -20,17 +22,59 @@ function m = main()
     % initialize model W and b
     [W, b] = InitWb(K, d, K, 1, std_dev, 0);
 
-    %TODO: make a loop and go through 1, 20, 50, 100, 500, 1000
-    % for first 20 images
-    P = EvaluateClassifier(train_X(1:20, 1), W(:, 1:20), b);
-    [grad_W, grad_b] = ComputeGradients(train_X(1:20, 1), train_Y(:, 1), P, W(:, 1:20), lambda);
-    [ngrad_b, ngrad_W] = ComputeGradsNumSlow(train_X(1:20, 1), train_Y(:, 1), W(:, 1:20), b, lambda, 1e-6);
+    % size 50 and 200, lambda 0 0.1 1
+    batch_sizes = [50, 200];
+    lambdas = [0.0, 0.1, 1.0];
+    disp('Gradient Check');
+    for i = batch_sizes
+        for j = lambdas
+            P = EvaluateClassifier(train_X(1:i, 1), W(:, 1:i), b);
+            [grad_W, grad_b] = ComputeGradients(train_X(1:i, 1), train_Y(:, 1), P, W(:, 1:i), j);
+            [ngrad_b, ngrad_W] = ComputeGradsNumSlow(train_X(1:i, 1), train_Y(:, 1), W(:, 1:i), b, j, 1e-6);
+            [rel_err_grad_W, rel_err_grad_b] = RelativeError(grad_W, ngrad_W, grad_b, ngrad_b);
+            fprintf('batch_size: %d      lambda: %f      rel_err_grad_W: %e      rel_err_grad_b: %e \n', i, j, rel_err_grad_W, rel_err_grad_b);
+        end
+    end
 
-    [Wstar, bstar] = MiniBatchGD(train_X, train_Y, GDparams, W, b, lambda);
-
-    %[rel_err_grad_W, rel_err_grad_b] = RelativeError(grad_W, ngrad_W, grad_b, ngrad_b)
-
-    %r = result(Wstar);
+    % lambda=0, n epochs=40, n batch=100, eta=.1
+    lambda = 0;
+    GDparams.n_batch = 100;
+    GDparams.eta = 0.1;
+    GDparams.n_epochs = 40;
+    [Wstar, bstar] = MiniBatchGD(train_X, train_Y, val_X, val_Y, GDparams, W, b, lambda);
+    r = result(Wstar);
+    acc = ComputeAccuracy(test_X, test_y, Wstar, bstar);
+    fprintf('Test accuracy after eperiment 1: %f\n', acc);
+    
+    % lambda=0, n epochs=40, n batch=100, eta=.01
+    lambda = 0;
+    GDparams.n_batch = 100;
+    GDparams.eta = 0.01;
+    GDparams.n_epochs = 40;
+    [Wstar, bstar] = MiniBatchGD(train_X, train_Y, val_X, val_Y, GDparams, W, b, lambda);
+    r = result(Wstar);
+    acc = ComputeAccuracy(test_X, test_y, Wstar, bstar);
+    fprintf('Test accuracy after eperiment 2: %f\n', acc);
+    
+	% lambda=.1, n epochs=40, n batch=100, eta=.01
+    lambda = 0.1;
+    GDparams.n_batch = 100;
+    GDparams.eta = 0.01;
+    GDparams.n_epochs = 40;
+    [Wstar, bstar] = MiniBatchGD(train_X, train_Y, val_X, val_Y, GDparams, W, b, lambda);
+    r = result(Wstar);
+    acc = ComputeAccuracy(test_X, test_y, Wstar, bstar);
+    fprintf('Test accuracy after eperiment 3: %f\n', acc);
+    
+    % lambda=1, n epochs=40, n batch=100, eta=.01
+    lambda = 1;
+    GDparams.n_batch = 100;
+    GDparams.eta = 0.01;
+    GDparams.n_epochs = 40;
+    [Wstar, bstar] = MiniBatchGD(train_X, train_Y, val_X, val_Y, GDparams, W, b, lambda);
+    r = result(Wstar);
+    acc = ComputeAccuracy(test_X, test_y, Wstar, bstar);
+    fprintf('Test accuracy after eperiment 4: %f\n', acc);
     
 end
 
@@ -54,7 +98,7 @@ end
 % initialize model W and b with random gaussian values
 % with zero mean and standard deviation of 0.01
 function [W , b] = InitWb(W_first, W_second, b_first, b_second, std_dev, mean)
-    %rng(400);
+    rng(400);
     W = randn(W_first, W_second) * std_dev + mean;
     b = randn(b_first, b_second) * std_dev + mean;
     
@@ -151,17 +195,19 @@ function [grad_b, grad_W] = ComputeGradsNumSlow(X, Y, W, b, lambda, h)
     end
 end
 
-function [Wstar, bstar] = MiniBatchGD(X, Y, GDparams, W, b, lambda)
+function [Wstar, bstar] = MiniBatchGD(X, Y, Xval, Yval, GDparams, W, b, lambda)
     N = size(X, 2);
     [y, ~, ~] = find(Y);
     y = y';
+    [yval, ~, ~] = find(Yval);
+    yval = yval';
     
     n_batch = GDparams.n_batch;
     eta = GDparams.eta;
     n_epochs = GDparams.n_epochs;
     
-    %costs = zeros(1, n_epochs);
-    %accuracies = zeros(1, n_epochs);
+    costs = zeros(n_epochs, 2);
+    accuracies = zeros(n_epochs, 2);
     
     for i=1:n_epochs
         for j=1:N / n_batch
@@ -178,26 +224,32 @@ function [Wstar, bstar] = MiniBatchGD(X, Y, GDparams, W, b, lambda)
             b = b - eta * grad_b;
         end
         
-        %costs(i) = ComputeCost(X, Y, W, b, lambda);
-        %accuracies(i) = ComputeAccuracy(X, y, W, b);
+        costs(i, 1) = ComputeCost(X, Y, W, b, lambda);
+        accuracies(i, 1) = ComputeAccuracy(X, y, W, b);
+        
+        costs(i, 2) = ComputeCost(Xval, Yval, W, b, lambda);
+        accuracies(i, 2) = ComputeAccuracy(Xval, yval, W, b);
         
     end
     
+    figure();
+    x = 1 : n_epochs;
+    plot(x, costs(:,1),x, costs(:,2));
+    figure();
+    plot(x, accuracies(:,1),x, accuracies(:,2));
+    
     Wstar = W;
     bstar = b;
-    
-    %disp(costs);
-    %disp(accuracies);
     
 end
 
 function [rel_err_grad_W, rel_err_grad_b] = RelativeError(grad_W, ngrad_W, grad_b, ngrad_b)
     top_W = abs(ngrad_W - grad_W);
-    bottom_W = max(0, abs(ngrad_W) + abs(grad_W));
+    bottom_W = max(0.0001, abs(ngrad_W) + abs(grad_W));
     rel_err_grad_W = max(max(top_W ./ bottom_W));
     
     top_b = abs(ngrad_b - grad_b);
-    bottom_b = max(0, abs(ngrad_b) + abs(grad_b));
+    bottom_b = max(0.0001, abs(ngrad_b) + abs(grad_b));
     rel_err_grad_b = max(top_b ./ bottom_b);
     
 end
@@ -212,7 +264,7 @@ function r = result(W)
         s_im(:,:,:,i) = permute(s_im(:,:,:,i), [2, 1, 3]);
     end
     
-    montage(s_im, 'Size', [5,5]);
+    montage(s_im, 'Size', [1,10]);
     
     r = s_im;
 end
