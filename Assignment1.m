@@ -163,6 +163,7 @@ function [grad_W, grad_b] = ComputeGradients(X, Y, P, W, lambda)
     
 end
 
+% function given for assignment comparison
 function [grad_b, grad_W] = ComputeGradsNumSlow(X, Y, W, b, lambda, h)
 
     no = size(W, 1);
@@ -195,6 +196,13 @@ function [grad_b, grad_W] = ComputeGradsNumSlow(X, Y, W, b, lambda, h)
     end
 end
 
+% mini-batch gradient descent algorithm
+% to learn the network?s parameters where the updates are defined in
+% equations (8, 9)
+% parameters controlling thelearning algorithm: 
+% n_batch the size of the mini-batches
+% eta the learning rate
+% n_epochs the number of runs through the whole training set
 function [Wstar, bstar] = MiniBatchGD(X, Y, Xval, Yval, GDparams, W, b, lambda)
     N = size(X, 2);
     [y, ~, ~] = find(Y);
@@ -243,6 +251,7 @@ function [Wstar, bstar] = MiniBatchGD(X, Y, Xval, Yval, GDparams, W, b, lambda)
     
 end
 
+% computes relative error and returns for grad_W and grad_b
 function [rel_err_grad_W, rel_err_grad_b] = RelativeError(grad_W, ngrad_W, grad_b, ngrad_b)
     top_W = abs(ngrad_W - grad_W);
     bottom_W = max(0.0001, abs(ngrad_W) + abs(grad_W));
@@ -254,14 +263,14 @@ function [rel_err_grad_W, rel_err_grad_b] = RelativeError(grad_W, ngrad_W, grad_
     
 end
 
+% visualization for the W matrix
 function r = result(W)
     figure();
-    s_im = zeros(32, 32, 3, size(W,1));
     
     for i=1:size(W,1)
         im = reshape(W(i, :), 32, 32, 3);
-        s_im(:,:,:,i) = (im - min(im(:))) / (max(im(:))- min(im(:)));
-        s_im(:,:,:,i) = permute(s_im(:,:,:,i), [2, 1, 3]);
+        s_im{i} = (im - min(im(:))) / (max(im(:))- min(im(:)));
+        s_im{i} = permute(s_im(:,:,:,i), [2, 1, 3]);
     end
     
     montage(s_im, 'Size', [1,10]);
